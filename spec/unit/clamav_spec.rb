@@ -4,6 +4,11 @@ class ClamAV
 
   describe "ClamAV" do
 
+    before(:all) do
+      @clam = ClamAV.instance
+      @clam.loaddb
+    end
+
     FILES = {
       'robots.txt' => CL_CLEAN,
       'eicar.com'  => 'Eicar-Test-Signature', # EICAR
@@ -22,34 +27,37 @@ class ClamAV
 
     FILES_ENCRYPTED = {
       'clam-p.rar'    => 'Encrypted.RAR',  # encripted RAR
-      'clam-ph.rar'    => 'Encrypted.RAR', # encripted RAR with encrypted both file data and headers
+      'clam-ph.rar'   => 'Encrypted.RAR', # encripted RAR with encrypted both file data and headers
+      'clam-v3.rar'   => 'ClamAV-Test-File'
     }
 
-    describe "with default options" do
-      before(:all) do
-        @clam = ClamAV.new
-      end
+    context "with default options" do
 
       it "should be instance of Clamav" do
         @clam.should be_instance_of(ClamAV)
       end
 
+      it "should return engine version" do
+        @clam.version.should >= '0.95'
+      end
 
       FILES.each do |file, result|
         it "should scan #{file} with result #{result.to_s}" do
-           @clam.scanfile(File.join(File.dirname(__FILE__), "../clamav-testfiles/", file)).should == result
-        end
-      end
-
-      FILES_ENCRYPTED.each do |file, result|
-        it "should scan encrypted #{file} with result #{result.to_s}" do
-          @clam.scanfile(File.join(File.dirname(__FILE__), "../clamav-testfiles/", file),
-            CL_SCAN_STDOPT | CL_SCAN_BLOCKENCRYPTED).should == result
+          @clam.scanfile(File.join(File.dirname(__FILE__), "../clamav-testfiles/", file)).should == result
         end
       end
 
       it "should return signatures count" do
-        @clam.signo.should >= 538736 # on 7/04/09
+        # strange, why not 757156? bug?
+        @clam.signo.should >= 756450 # on 17/04/10
+      end
+
+      if ClamAV.instance.version >= '0.96'
+        it "should return all signatures count" do
+          (default = @clam.countsigs).should >= 757156 # on 17/04/10
+          (all = @clam.countsigs(CL_COUNTSIGS_ALL)).should >= 757156
+          default.should == all
+        end
       end
 
       it "should not reload db when fresh" do
@@ -58,15 +66,13 @@ class ClamAV
 
     end
 
-    describe "with custom options" do
+    context "scan with custom options" do
 
-      before(:all) do
-        @clam = ClamAV.new(CL_SCAN_STDOPT | CL_SCAN_BLOCKENCRYPTED)
-      end
-
-      it "should scan encrypted file with detect" do
-        @clam.scanfile(File.join(File.dirname(__FILE__), "../clamav-testfiles/",
-            'clam-v3.rar')).should == 'ClamAV-Test-File'
+      FILES_ENCRYPTED.each do |file, result|
+        it "should scan encrypted #{file} with result #{result.to_s}" do
+          @clam.scanfile(File.join(File.dirname(__FILE__), "../clamav-testfiles/", file),
+            CL_SCAN_STDOPT | CL_SCAN_BLOCKENCRYPTED).should match(/#{result}$/)
+        end
       end
 
       it "should scan OLE2 file with not detect" do
@@ -76,10 +82,14 @@ class ClamAV
 
     end
 
-    describe "with custom db options" do
+    context "with custom db options" do
 
       before(:all) do
-        @clam = ClamAV.new(CL_SCAN_STDOPT, CL_DB_STDOPT | CL_DB_PUA)
+        @clam.loaddb(CL_DB_STDOPT | CL_DB_PUA)
+      end
+
+      after(:all) do
+        @clam.loaddb
       end
 
       it "should detect PUA" do
@@ -89,10 +99,20 @@ class ClamAV
 
     end
 
+    context "limit CL_ENGINE_MAX_FILES" do
 
-    describe "limits" do
-      before(:each) do
-        @clam = ClamAV.new
+      before(:all) do
+        # save default
+        @mem = @clam.getlimit(CL_ENGINE_MAX_FILES)
+      end
+
+      after(:each) do
+        # restore default
+        @clam.setlimit(CL_ENGINE_MAX_FILES, @mem)
+      end
+
+      it "should get default limit" do
+        @clam.getlimit(CL_ENGINE_MAX_FILES).should == 10000
       end
 
       it "should set limit" do
@@ -105,9 +125,9 @@ class ClamAV
           should == CL_CLEAN
       end
 
-      it "should get limit" do
-        @clam.getlimit(CL_ENGINE_MAX_FILES).should == 10000
-      end
+    end
+
+    context "get/set" do
 
       it "should get db time" do
         Time.at(@clam.getlimit(CL_ENGINE_DB_TIME)).should >= Time.now - 60*60*24 # 1 day

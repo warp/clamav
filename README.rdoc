@@ -8,33 +8,25 @@ $ sudo gem install clamav
 
 == REQUIREMENTS:
 
-clamav >= 0.95, libclamav6, libclamav-dev
+clamav >= 0.95.3, libclamav6, libclamav-dev
+clamav >= 0.96 is recommended
 
 == SYNOPSIS:
 
-== ClamAV.new([options[, db_options]])
+  *Changes*: Now ClamAV is a singleton. Use ClamAV.instance instead ClamAV.new.
+  You should call ClamAV#loaddb([options]) after first call ClamAV.instance.
+  Next run ClamAV#loaddb with another options will recreate/recompile clamav engine/database.
+
+== ClamAV.instance
 
   return:
     ClamAV instance
 
-Options:
-
-* CL_SCAN_STDOPT (default) equal CL_SCAN_ARCHIVE | CL_SCAN_MAIL | CL_SCAN_OLE2 | CL_SCAN_PDF | CL_SCAN_HTML | CL_SCAN_PE | CL_SCAN_ALGORITHMIC | CL_SCAN_ELF
-* CL_SCAN_RAW
-* CL_SCAN_BLOCKENCRYPTED
-* CL_SCAN_BLOCKBROKEN
-* CL_SCAN_MAILURL
-* CL_SCAN_PHISHING_BLOCKSSL
-* CL_SCAN_PHISHING_BLOCKCLOAK
-* CL_SCAN_STRUCTURED
-* CL_SCAN_STRUCTURED_SSN_NORMAL
-* CL_SCAN_STRUCTURED_SSN_STRIPPED
-* CL_SCAN_PARTIAL_MESSAGE
-* CL_SCAN_HEURISTIC_PRECEDENCE
+== ClamAV#loaddb([db_options])
 
 DB options:
 
-* CL_DB_STDOPT (default) equal CL_DB_PHISHING | CL_DB_PHISHING_URLS
+* CL_DB_STDOPT (default) equal CL_DB_PHISHING | CL_DB_PHISHING_URLS | CL_DB_BYTECODE
 * CL_DB_PUA
 * CL_DB_CVDNOTMP
 * CL_DB_PUA_MODE
@@ -44,22 +36,33 @@ DB options:
 See ClamAV documentation and sources for details.
 
 
-
 == ClamAV#scanfile(filename[, options])
   options default CL_SCAN_STDOPT
-    
+
+Options:
+
+* CL_SCAN_STDOPT (default) equal CL_SCAN_ARCHIVE | CL_SCAN_MAIL | CL_SCAN_OLE2 | CL_SCAN_PDF | CL_SCAN_HTML | CL_SCAN_PE | CL_SCAN_ALGORITHMIC | CL_SCAN_ELF
+* CL_SCAN_RAW
+* CL_SCAN_BLOCKENCRYPTED
+* CL_SCAN_BLOCKBROKEN
+* CL_SCAN_PHISHING_BLOCKSSL
+* CL_SCAN_PHISHING_BLOCKCLOAK
+* CL_SCAN_STRUCTURED
+* CL_SCAN_STRUCTURED_SSN_NORMAL
+* CL_SCAN_STRUCTURED_SSN_STRIPPED
+* CL_SCAN_PARTIAL_MESSAGE
+* CL_SCAN_HEURISTIC_PRECEDENCE
+
   return:
     virusname or ClamAV returncode(Fixnum)
 
 
-
 == ClamAV#reload()
-  reload virus db if changed
+  reload virus database if changed
 
   return:
     1 - reload successful
     0 - reload unnecessary
-
 
 
 == ClamAV#setlimit(param, value)
@@ -96,6 +99,17 @@ See ClamAV documentation and sources for details.
 == ClamaAV#signo()
   get loaded signatures count
 
+== ClamaAV#countsigs([options])
+  get loaded signatures count (since 0.96 engine version)
+
+Options:
+* CL_COUNTSIGS_ALL (default)
+* CL_COUNTSIGS_OFFICIAL
+* CL_COUNTSIGS_UNOFFICIAL
+
+
+== ClamaAV#version()
+  get Clamav engine version string
 
 
 == LICENSE:
